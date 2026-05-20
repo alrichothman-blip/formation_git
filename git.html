@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Git & GitHub — Le Contrôle de Versions</title>
+    <style>
+        /* ============================================================
+       CSS VARIABLES & RESET
+    ============================================================ */
+        :root {
+            --bg-deep: #050a14;
+            --bg-mid: #0b1628;
+            --glass-bg: rgba(255, 255, 255, 0.055);
+            --glass-border: rgba(255, 255, 255, 0.13);
+            --glass-hover: rgba(255, 255, 255, 0.10);
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --text-primary: #f0f4ff;
+            --text-secondary: #94a3b8;
+            --text-muted: #4a5568;
+            --blur-amount: 18px;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+            --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+            --font-body: 'DM Sans', 'SF Pro Text', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.75;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* ============================================================
+       ANIMATED BACKGROUND
+    ============================================================ */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.28;
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+
+        .bg-orb:nth-child(1) {
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, #1e40af, transparent 70%);
+            top: -200px;
+            left: -150px;
+            animation-duration: 22s;
+        }
+
+        .bg-orb:nth-child(2) {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #7c3aed, transparent 70%);
+            top: 40%;
+            right: -100px;
+            animation-duration: 18s;
+            animation-delay: -5s;
+        }
+
+        .bg-orb:nth-child(3) {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #0891b2, transparent 70%);
+            bottom: 10%;
+            left: 30%;
+            animation-duration: 25s;
+            animation-delay: -10s;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        @keyframes drift {
+            from {
+                transform: translate(0, 0) scale(1);
+            }
+
+            to {
+                transform: translate(40px, 30px) scale(1.08);
+            }
+        }
+
+        /* ============================================================
+       LAYOUT WRAPPER
+    ============================================================ */
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ============================================================
+       PROGRESS BAR
+    ============================================================ */
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan), var(--accent-purple));
+            z-index: 1000;
+            transition: width 0.1s linear;
+            border-radius: 0 2px 2px 0;
+        }
+
+        /* ============================================================
+       TOP NAVBAR
+    ============================================================ */
+        .navbar {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 48px);
+            max-width: 1160px;
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            background: rgba(5, 10, 20, 0.72);
+            backdrop-filter: blur(var(--blur-amount));
+            -webkit-backdrop-filter: blur(var(--blur-amount));
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .navbar-brand .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .navbar-links {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            list-style: none;
+        }
+
+        .navbar-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.82rem;
+            padding: 6px 14px;
+            border-radius: 100px;
+            transition: var(--transition);
+        }
+
+        .navbar-links a:hover {
+            color: var(--text-primary);
+            background: var(--glass-bg);
+        }
+
+        .nav-cta {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)) !important;
+            color: white !important;
+            font-weight: 600;
+        }
+
+        .nav-cta:hover {
+            opacity: 0.88;
+            transform: translateY(-1px);
+        }
+
+        /* ============================================================
+       HERO SECTION
+    ============================================================ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 0 80px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+            animation: fadeInUp 0.6s ease both;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2.6rem, 6vw, 4.8rem);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -0.04em;
+            margin-bottom: 28px;
+            animation: fadeInUp 0.6s 0.1s ease both;
+        }
+
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 40%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-desc {
+            max-width: 600px;
+            font-size: 1.12rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 48px;
+            animation: fadeInUp 0.6s 0.2s ease both;
+        }
+
+        .hero-stats {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            animation: fadeInUp 0.6s 0.3s ease both;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat .num {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-stat .label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .hero-divider {
+            width: 1px;
+            height: 40px;
+            background: var(--glass-border);
+        }
+
+        .hero-scroll {
+            margin-top: 64px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            animation: fadeInUp 0.6s 0.5s ease both;
+        }
+
+        .scroll-line {
+            width: 1px;
+            height: 48px;
+            background: linear-gradient(to bottom, transparent, var(--accent-blue));
+            animation: scrollPulse 2s infinite;
+        }
+
+        @keyframes scrollPulse {
+
+            0%,
+            100% {
+                transform: scaleY(1);
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: scaleY(0.6);
+                opacity: 1;
+            }
+        }
+
+        /* ============================================================
+       GLASS CARD
+    ============================================================ */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-amount));
+            -webkit-backdrop-filter: blur(var(--blur-amount));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            box-shadow:
+                0 8px 40px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.09),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+            border-radius: inherit;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.22);
+            box-shadow:
+                0 16px 60px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            transform: translateY(-2px);
+        }
+
+        /* ============================================================
+       STICKY SIDEBAR / TABLE OF CONTENTS
+    ============================================================ */
+        .content-layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 32px;
+            align-items: start;
+            padding: 40px 0 100px;
+        }
+
+        .sidebar {
+            position: sticky;
+            top: 90px;
+        }
+
+        .toc-card {
+            padding: 24px;
+        }
+
+        .toc-title {
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toc-title::before {
+            content: '';
+            width: 16px;
+            height: 2px;
+            background: var(--accent-blue);
+            border-radius: 1px;
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-list li {
+            margin-bottom: 2px;
+        }
+
+        .toc-list a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.83rem;
+            line-height: 1.4;
+            transition: var(--transition);
+            border-left: 2px solid transparent;
+        }
+
+        .toc-list a:hover,
+        .toc-list a.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            border-left-color: var(--accent-blue);
+        }
+
+        .toc-list a .toc-num {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            min-width: 18px;
+        }
+
+        /* ============================================================
+       MAIN CONTENT
+    ============================================================ */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* Section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .section-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.55rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .section-number {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Content card body */
+        .card-body {
+            padding: 32px;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            font-size: 0.97rem;
+        }
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ============================================================
+       HIGHLIGHT / CALLOUT BOXES
+    ============================================================ */
+        .callout {
+            display: flex;
+            gap: 16px;
+            padding: 20px 24px;
+            border-radius: var(--radius-md);
+            margin: 20px 0;
+        }
+
+        .callout-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+        }
+
+        .callout-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .callout-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        .callout-key {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.25);
+        }
+
+        .callout-icon {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .callout-content {
+            flex: 1;
+        }
+
+        .callout-content strong {
+            display: block;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.88rem;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .callout-content p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* ============================================================
+       DEFINITION TERM
+    ============================================================ */
+        .definition {
+            padding: 20px 24px;
+            background: rgba(6, 182, 212, 0.08);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-left: 3px solid var(--accent-cyan);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            margin: 20px 0;
+        }
+
+        .definition .term {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--accent-cyan);
+            margin-bottom: 8px;
+        }
+
+        .definition p {
+            margin: 0;
+            font-size: 0.92rem;
+        }
+
+        /* ============================================================
+       INLINE CODE & CODE BLOCKS
+    ============================================================ */
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            padding: 2px 7px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 4px;
+            color: var(--accent-cyan);
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .code-block-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .code-block-lang {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .code-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .code-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .code-dot:nth-child(1) {
+            background: #ff5f57;
+        }
+
+        .code-dot:nth-child(2) {
+            background: #febc2e;
+        }
+
+        .code-dot:nth-child(3) {
+            background: #28c840;
+        }
+
+        .code-block pre {
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.86rem;
+            line-height: 1.7;
+            color: #c9d1d9;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .code-comment {
+            color: #6e7781;
+        }
+
+        .code-cmd {
+            color: #79c0ff;
+        }
+
+        .code-str {
+            color: #a5d6ff;
+        }
+
+        .code-kw {
+            color: #ff7b72;
+        }
+
+        /* ============================================================
+       CONCEPT CARDS GRID
+    ============================================================ */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .concept-card {
+            padding: 22px;
+            border-radius: var(--radius-md);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            transition: var(--transition);
+            cursor: default;
+        }
+
+        .concept-card:hover {
+            background: var(--glass-hover);
+            border-color: rgba(255, 255, 255, 0.22);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .concept-card .card-icon {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+        }
+
+        .concept-card h4 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.97rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .concept-card p {
+            font-size: 0.84rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* ============================================================
+       TIMELINE (VERSIONING FLOW)
+    ============================================================ */
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+            margin: 24px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+            border-radius: 1px;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 24px;
+            animation: fadeInLeft 0.5s ease both;
+        }
+
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -27px;
+            top: 4px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            border: 2px solid var(--bg-deep);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+        }
+
+        .timeline-item:nth-child(2) .timeline-dot {
+            background: var(--accent-purple);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+        }
+
+        .timeline-item:nth-child(3) .timeline-dot {
+            background: var(--accent-emerald);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+        }
+
+        .timeline-item:nth-child(4) .timeline-dot {
+            background: var(--accent-amber);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+        }
+
+        .timeline-item h4 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.97rem;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .timeline-item p {
+            font-size: 0.88rem;
+            margin: 0;
+        }
+
+        /* ============================================================
+       ACCORDEON
+    ============================================================ */
+        .accordion-item {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .accordion-item:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .accordion-header {
+            width: 100%;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            cursor: pointer;
+            text-align: left;
+            transition: var(--transition);
+        }
+
+        .accordion-header:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .accordion-header.open {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .accordion-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .accordion-emoji {
+            font-size: 1.2rem;
+        }
+
+        .accordion-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.97rem;
+            color: var(--text-primary);
+        }
+
+        .accordion-chevron {
+            color: var(--text-muted);
+            transition: transform var(--transition);
+            font-size: 0.8rem;
+        }
+
+        .accordion-header.open .accordion-chevron {
+            transform: rotate(180deg);
+            color: var(--accent-blue);
+        }
+
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .accordion-body.open {
+            max-height: 800px;
+        }
+
+        .accordion-body-inner {
+            padding: 0 22px 20px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 18px;
+            margin-top: 0;
+        }
+
+        .accordion-body-inner p {
+            font-size: 0.92rem;
+            margin-bottom: 12px;
+        }
+
+        .accordion-body-inner p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ============================================================
+       COMPARISON TABLE
+    ============================================================ */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.88rem;
+        }
+
+        .compare-table th {
+            padding: 14px 18px;
+            text-align: left;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .compare-table td {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+
+        .compare-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .compare-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge-git {
+            display: inline-block;
+            padding: 2px 10px;
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            color: var(--accent-amber);
+            font-weight: 600;
+        }
+
+        .badge-centralized {
+            display: inline-block;
+            padding: 2px 10px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            color: #f87171;
+            font-weight: 600;
+        }
+
+        td strong {
+            color: var(--text-primary);
+        }
+
+        /* ============================================================
+       KEY POINTS LIST
+    ============================================================ */
+        .key-list {
+            list-style: none;
+            margin: 16px 0;
+        }
+
+        .key-list li {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        .key-list li:last-child {
+            border-bottom: none;
+        }
+
+        .key-list .check {
+            width: 20px;
+            height: 20px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            color: var(--accent-emerald);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* ============================================================
+       VISUAL DIAGRAM — SNAPSHOTS
+    ============================================================ */
+        .snapshot-diagram {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin: 28px 0;
+            padding: 28px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+        }
+
+        .snapshot-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            min-width: 88px;
+        }
+
+        .snapshot-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .snapshot-circle.v1 {
+            background: linear-gradient(135deg, #1e3a5f, #2563eb);
+            border: 2px solid #3b82f6;
+        }
+
+        .snapshot-circle.v2 {
+            background: linear-gradient(135deg, #2d1b69, #7c3aed);
+            border: 2px solid #8b5cf6;
+        }
+
+        .snapshot-circle.v3 {
+            background: linear-gradient(135deg, #065f46, #059669);
+            border: 2px solid #10b981;
+        }
+
+        .snapshot-circle.v4 {
+            background: linear-gradient(135deg, #78350f, #d97706);
+            border: 2px solid #f59e0b;
+            color: #1a1a2e;
+        }
+
+        .snapshot-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .snapshot-arrow {
+            flex: 1;
+            min-width: 32px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .snapshot-arrow::after {
+            content: '▶';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent-purple);
+            font-size: 0.6rem;
+        }
+
+        /* ============================================================
+       QUIZ / SELF-CHECK
+    ============================================================ */
+        .quiz-card {
+            padding: 28px 32px;
+        }
+
+        .quiz-question {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quiz-option {
+            padding: 14px 18px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            background: transparent;
+            text-align: left;
+            width: 100%;
+        }
+
+        .quiz-option:hover {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: var(--text-primary);
+        }
+
+        .quiz-option.correct {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--accent-emerald);
+        }
+
+        .quiz-option.wrong {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .quiz-feedback {
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.88rem;
+            display: none;
+        }
+
+        .quiz-feedback.show {
+            display: block;
+        }
+
+        .quiz-feedback.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            color: var(--accent-emerald);
+        }
+
+        .quiz-feedback.error {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        /* ============================================================
+       SUMMARY SECTION
+    ============================================================ */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .summary-item {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .summary-item:hover {
+            background: rgba(255, 255, 255, 0.07);
+            transform: translateY(-2px);
+        }
+
+        .summary-item .si-icon {
+            font-size: 1.6rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .summary-item .si-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .summary-item .si-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+       BACK TO TOP
+    ============================================================ */
+        #back-to-top {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: white;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: var(--transition);
+            z-index: 800;
+        }
+
+        #back-to-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #back-to-top:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.5);
+        }
+
+        /* ============================================================
+       ANIMATIONS
+    ============================================================ */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(28px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+        @media (max-width: 900px) {
+            .content-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+
+            .toc-card {
+                display: none;
+            }
+
+            /* hidden on mobile, replaced by inline nav */
+        }
+
+        @media (max-width: 600px) {
+            .navbar {
+                top: 8px;
+                padding: 10px 16px;
+                width: calc(100% - 24px);
+            }
+
+            .navbar-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+
+            .hero-stats {
+                gap: 20px;
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+
+            .snapshot-diagram {
+                padding: 16px;
+            }
+
+            #back-to-top {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+
+        /* Section color accents */
+        .accent-blue {
+            color: var(--accent-blue);
+        }
+
+        .accent-cyan {
+            color: var(--accent-cyan);
+        }
+
+        .accent-purple {
+            color: var(--accent-purple);
+        }
+
+        .accent-emerald {
+            color: var(--accent-emerald);
+        }
+
+        .accent-amber {
+            color: var(--accent-amber);
+        }
+
+        .icon-bg-blue {
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .icon-bg-cyan {
+            background: rgba(6, 182, 212, 0.15);
+        }
+
+        .icon-bg-purple {
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .icon-bg-emerald {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .icon-bg-amber {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        h2.sub {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 24px 0 12px;
+            letter-spacing: -0.01em;
+        }
+
+        h3.sub {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 20px 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Progress Bar -->
+    <div id="progress-bar"></div>
+
+    <!-- Animated Background -->
+    <div class="bg-canvas">
+        <div class="bg-orb"></div>
+        <div class="bg-orb"></div>
+        <div class="bg-orb"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a class="navbar-brand" href="#">
+            <div class="brand-icon">⑂</div>
+            Git & GitHub
+        </a>
+        <ul class="navbar-links">
+            <li><a href="#introduction">Intro</a></li>
+            <li><a href="#definition">Définition</a></li>
+            <li><a href="#fonctionnement">Fonctionnement</a></li>
+            <li><a href="#avantages">Avantages</a></li>
+            <li><a href="#quiz">Quiz</a></li>
+            <li><a href="#resume" class="nav-cta">Résumé</a></li>
+        </ul>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero page-wrapper">
+        <div class="hero-badge"><span class="dot"></span>Chapitre 1 · Fondamentaux</div>
+        <h1>Découvrez la magie du<br><span class="gradient-text">contrôle de versions</span></h1>
+        <p class="hero-desc">
+            Comprenez pourquoi le contrôle de versions est la compétence fondamentale de tout développeur moderne —
+            et comment Git a révolutionné la façon dont le code est géré et collaboré.
+        </p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="num">7</div>
+                <div class="label">Sections</div>
+            </div>
+            <div class="hero-divider"></div>
+            <div class="hero-stat">
+                <div class="num">15</div>
+                <div class="label">min lecture</div>
+            </div>
+            <div class="hero-divider"></div>
+            <div class="hero-stat">
+                <div class="num">1</div>
+                <div class="label">Quiz</div>
+            </div>
+        </div>
+        <div class="hero-scroll">
+            <div class="scroll-line"></div>
+            Défiler pour commencer
+        </div>
+    </section>
+
+    <!-- MAIN CONTENT -->
+    <div class="page-wrapper">
+        <div class="content-layout">
+
+            <!-- SIDEBAR TOC -->
+            <aside class="sidebar">
+                <div class="glass-card toc-card">
+                    <div class="toc-title">Table des matières</div>
+                    <ul class="toc-list">
+                        <li><a href="#introduction"><span class="toc-num">01</span>Qu'est-ce que le contrôle de versions
+                                ?</a></li>
+                        <li><a href="#probleme"><span class="toc-num">02</span>Le problème sans VCS</a></li>
+                        <li><a href="#definition"><span class="toc-num">03</span>Définition et concepts clés</a></li>
+                        <li><a href="#fonctionnement"><span class="toc-num">04</span>Comment Git fonctionne-t-il ?</a>
+                        </li>
+                        <li><a href="#centralized-vs-distributed"><span class="toc-num">05</span>Centralisé vs
+                                Distribué</a></li>
+                        <li><a href="#avantages"><span class="toc-num">06</span>Avantages concrets</a></li>
+                        <li><a href="#quiz"><span class="toc-num">07</span>Vérifiez vos acquis</a></li>
+                        <li><a href="#resume"><span class="toc-num">08</span>Résumé du chapitre</a></li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- MAIN -->
+            <main class="main-content">
+
+                <!-- ——— 01. INTRODUCTION ——— -->
+                <article id="introduction" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-blue" style="font-size:22px">🧭</div>
+                            <div>
+                                <span class="section-number">Section 01</span>
+                                <h2 class="section-title">Qu'est-ce que le contrôle de versions ?</h2>
+                            </div>
+                        </div>
+
+                        <p>
+                            Imaginez que vous travaillez sur un document Word et que vous faites une
+                            modification désastreuse — vous souhaiteriez pouvoir revenir en arrière.
+                            La plupart des éditeurs de texte permettent un simple <code>Ctrl+Z</code>,
+                            mais que se passe-t-il si vous fermez le fichier ? Que se passe-t-il si
+                            vous êtes à dix étapes du problème ?
+                        </p>
+                        <p>
+                            Un <strong style="color:var(--text-primary)">système de contrôle de versions</strong> (ou
+                            VCS,
+                            <em>Version Control System</em>) répond exactement à ce besoin : il enregistre
+                            toutes les modifications apportées à un fichier ou à un ensemble de fichiers
+                            au fil du temps, de sorte que vous puissiez rappeler des versions spécifiques
+                            plus tard.
+                        </p>
+
+                        <div class="callout callout-info">
+                            <div class="callout-icon">💡</div>
+                            <div class="callout-content">
+                                <strong>Bon à savoir</strong>
+                                <p>Le contrôle de versions ne concerne pas uniquement le code source.
+                                    Il peut être utilisé avec n'importe quel type de fichier — graphiques,
+                                    documents, données de configuration, etc.</p>
+                            </div>
+                        </div>
+
+                        <p>
+                            Pensez à un VCS comme à une <strong style="color:var(--text-primary)">machine à remonter le
+                                temps</strong>
+                            pour votre projet : il vous permet de naviguer à travers toutes les versions
+                            de vos fichiers, de comprendre qui a modifié quoi et quand, et de fusionner
+                            le travail de plusieurs personnes en toute sécurité.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- ——— 02. LE PROBLÈME ——— -->
+                <article id="probleme" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-amber">⚠️</div>
+                            <div>
+                                <span class="section-number">Section 02</span>
+                                <h2 class="section-title">Le problème sans VCS</h2>
+                            </div>
+                        </div>
+
+                        <p>Avant l'adoption des systèmes de contrôle de versions modernes, les développeurs
+                            avaient recours à des pratiques très artisanales — et potentiellement dangereuses.
+                        </p>
+
+                        <h2 class="sub">La technique des copies manuelles</h2>
+                        <p>La solution la plus répandue consistait à dupliquer manuellement les dossiers :</p>
+
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <div class="code-dots">
+                                    <div class="code-dot"></div>
+                                    <div class="code-dot"></div>
+                                    <div class="code-dot"></div>
+                                </div>
+                                <span class="code-block-lang">Structure de fichiers typique (avant Git)</span>
+                            </div>
+                            <pre><span class="code-comment"># Exemple de nommage "artisanal" courant</span>
+
+projet_final/
+projet_final_v2/
+projet_final_VRAI_final/
+projet_final_VRAI_final_2/
+projet_final_definitif/
+projet_final_definitif_UTILISER_CELUI_CI/</pre>
+                        </div>
+
+                        <p>Cette approche pose de nombreux problèmes majeurs :</p>
+
+                        <ul class="key-list">
+                            <li><span class="check">✕</span> <span><strong style="color:var(--text-primary)">Confusion
+                                        des versions :</strong> Impossible de savoir quelle version est la plus récente
+                                    ou la plus stable.</span></li>
+                            <li><span class="check">✕</span> <span><strong style="color:var(--text-primary)">Perte de
+                                        contexte :</strong> Aucun moyen de savoir ce qui a changé entre deux
+                                    versions.</span></li>
+                            <li><span class="check">✕</span> <span><strong
+                                        style="color:var(--text-primary)">Collaboration difficile :</strong> Deux
+                                    développeurs qui travaillent sur le même fichier écrasent mutuellement leurs
+                                    modifications.</span></li>
+                            <li><span class="check">✕</span> <span><strong style="color:var(--text-primary)">Espace
+                                        disque gaspillé :</strong> Chaque copie duplique l'intégralité du projet.</span>
+                            </li>
+                            <li><span class="check">✕</span> <span><strong style="color:var(--text-primary)">Aucune
+                                        traçabilité :</strong> Impossible de savoir qui a modifié quoi, et pour quelle
+                                    raison.</span></li>
+                        </ul>
+
+                        <div class="callout callout-warning">
+                            <div class="callout-icon">🔥</div>
+                            <div class="callout-content">
+                                <strong>Scénario catastrophe</strong>
+                                <p>Vous travaillez à trois sur un projet. Développeur A modifie le fichier A,
+                                    Développeur B modifie le même fichier. B envoie sa version par email. A reçoit
+                                    l'email et écrase ses propres modifications avec la version de B.
+                                    Résultat : des heures de travail perdues.</p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- ——— 03. DÉFINITION ——— -->
+                <article id="definition" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-cyan">📖</div>
+                            <div>
+                                <span class="section-number">Section 03</span>
+                                <h2 class="section-title">Définition et concepts clés</h2>
+                            </div>
+                        </div>
+
+                        <div class="definition">
+                            <div class="term">Contrôle de versions (Version Control)</div>
+                            <p>Système qui enregistre les modifications apportées à un fichier ou à un
+                                ensemble de fichiers au fil du temps, permettant de rappeler des versions
+                                spécifiques ultérieurement. Il permet aussi de comparer les modifications,
+                                identifier les auteurs, et restaurer des états antérieurs.</p>
+                        </div>
+
+                        <h2 class="sub">Les concepts fondamentaux</h2>
+
+                        <div class="cards-grid">
+                            <div class="concept-card">
+                                <div class="card-icon">📸</div>
+                                <h4>Commit (Instantané)</h4>
+                                <p>Une photographie de l'état de votre projet à un instant précis. Chaque commit capture
+                                    les changements et inclut un message décrivant ce qui a été fait.</p>
+                            </div>
+                            <div class="concept-card">
+                                <div class="card-icon">🌿</div>
+                                <h4>Branche (Branch)</h4>
+                                <p>Une ligne de développement indépendante qui permet de travailler sur une
+                                    fonctionnalité sans affecter le code principal (souvent appelé <code>main</code> ou
+                                    <code>master</code>).</p>
+                            </div>
+                            <div class="concept-card">
+                                <div class="card-icon">🔀</div>
+                                <h4>Fusion (Merge)</h4>
+                                <p>L'opération qui intègre les modifications d'une branche dans une autre. Git est très
+                                    intelligent pour résoudre automatiquement la plupart des conflits.</p>
+                            </div>
+                            <div class="concept-card">
+                                <div class="card-icon">📦</div>
+                                <h4>Dépôt (Repository)</h4>
+                                <p>Le conteneur de votre projet. Un dépôt contient tous les fichiers du projet ainsi que
+                                    l'historique complet de toutes les modifications.</p>
+                            </div>
+                            <div class="concept-card">
+                                <div class="card-icon">🔄</div>
+                                <h4>Clone</h4>
+                                <p>Une copie complète et indépendante d'un dépôt, incluant tout l'historique. Avec Git,
+                                    vous pouvez travailler entièrement hors ligne.</p>
+                            </div>
+                            <div class="concept-card">
+                                <div class="card-icon">☁️</div>
+                                <h4>Remote (Distant)</h4>
+                                <p>Un dépôt hébergé sur un serveur (comme GitHub) qui permet à plusieurs développeurs de
+                                    partager et synchroniser leur travail.</p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- ——— 04. FONCTIONNEMENT ——— -->
+                <article id="fonctionnement" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-purple">⚙️</div>
+                            <div>
+                                <span class="section-number">Section 04</span>
+                                <h2 class="section-title">Comment Git fonctionne-t-il ?</h2>
+                            </div>
+                        </div>
+
+                        <p>
+                            Git est le système de contrôle de versions le plus utilisé au monde.
+                            Il a été créé en <strong style="color:var(--text-primary)">2005 par Linus Torvalds</strong>
+                            — le créateur du noyau Linux — avec un objectif précis : rapidité, design simple,
+                            support fort pour le développement non-linéaire (milliers de branches parallèles),
+                            entièrement distribué.
+                        </p>
+
+                        <h2 class="sub">La notion d'instantanés (snapshots)</h2>
+                        <p>
+                            Contrairement à d'autres systèmes VCS qui stockent les modifications sous forme de
+                            <em>différences</em> par rapport à la version précédente, Git pense ses données
+                            comme une <strong style="color:var(--text-primary)">série d'instantanés</strong>
+                            de votre système de fichiers miniature.
+                        </p>
+                        <p>
+                            À chaque commit, Git prend une photo de tous vos fichiers et stocke une référence
+                            vers cet instantané. Pour être efficace, si des fichiers n'ont pas changé, Git ne
+                            les stocke pas à nouveau — il crée simplement un lien vers le fichier identique
+                            précédemment stocké.
+                        </p>
+
+                        <!-- Snapshot Diagram -->
+                        <div class="snapshot-diagram">
+                            <div class="snapshot-node">
+                                <div class="snapshot-circle v1">A1B2</div>
+                                <div class="snapshot-label">Commit 1<br><small>Init projet</small></div>
+                            </div>
+                            <div class="snapshot-arrow"></div>
+                            <div class="snapshot-node">
+                                <div class="snapshot-circle v2">C3D4</div>
+                                <div class="snapshot-label">Commit 2<br><small>Ajout login</small></div>
+                            </div>
+                            <div class="snapshot-arrow"></div>
+                            <div class="snapshot-node">
+                                <div class="snapshot-circle v3">E5F6</div>
+                                <div class="snapshot-label">Commit 3<br><small>Fix bug #12</small></div>
+                            </div>
+                            <div class="snapshot-arrow"></div>
+                            <div class="snapshot-node">
+                                <div class="snapshot-circle v4">G7H8</div>
+                                <div class="snapshot-label">Commit 4<br><small>Release v1.0</small></div>
+                            </div>
+                        </div>
+
+                        <h2 class="sub">Les trois zones de travail</h2>
+
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <h4>📁 Le répertoire de travail <em>(Working Directory)</em></h4>
+                                <p>C'est là où vous modifiez activement vos fichiers. Vos modifications ici ne sont
+                                    pas encore enregistrées dans l'historique Git.</p>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <h4>🗂 La zone d'index <em>(Staging Area)</em></h4>
+                                <p>Un espace intermédiaire où vous préparez votre prochain commit. Vous choisissez
+                                    précisément quelles modifications seront incluses dans le prochain instantané.</p>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <h4>🗄 Le dépôt Git <em>(Git Directory / Repository)</em></h4>
+                                <p>L'endroit où Git stocke les métadonnées et la base de données des objets de votre
+                                    projet. C'est la partie la plus importante — c'est ce qui est copié lors d'un clone.
+                                </p>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <h4>☁️ Le dépôt distant <em>(Remote Repository)</em></h4>
+                                <p>Une version hébergée sur un serveur (GitHub, GitLab, Bitbucket…) qui permet la
+                                    collaboration et la sauvegarde externe de votre historique.</p>
+                            </div>
+                        </div>
+
+                        <h2 class="sub">Les commandes essentielles</h2>
+
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <div class="code-dots">
+                                    <div class="code-dot"></div>
+                                    <div class="code-dot"></div>
+                                    <div class="code-dot"></div>
+                                </div>
+                                <span class="code-block-lang">Bash — Git workflow de base</span>
+                            </div>
+                            <pre><span class="code-comment"># 1. Initialiser un nouveau dépôt</span>
+<span class="code-cmd">git init</span>
+
+<span class="code-comment"># 2. Vérifier l'état du répertoire de travail</span>
+<span class="code-cmd">git status</span>
+
+<span class="code-comment"># 3. Ajouter des fichiers à la zone d'index (staging)</span>
+<span class="code-cmd">git add</span> <span class="code-str">nom_du_fichier.js</span>
+<span class="code-cmd">git add</span> <span class="code-str">.</span>          <span class="code-comment"># Ajoute tous les fichiers modifiés</span>
+
+<span class="code-comment"># 4. Enregistrer un instantané (commit)</span>
+<span class="code-cmd">git commit</span> <span class="code-kw">-m</span> <span class="code-str">"feat: ajout de la page de connexion"</span>
+
+<span class="code-comment"># 5. Consulter l'historique des commits</span>
+<span class="code-cmd">git log</span> <span class="code-kw">--oneline</span>
+
+<span class="code-comment"># 6. Créer une nouvelle branche et basculer dessus</span>
+<span class="code-cmd">git checkout</span> <span class="code-kw">-b</span> <span class="code-str">feature/nouvelle-fonctionnalite</span></pre>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- ——— 05. CENTRALISÉ VS DISTRIBUÉ ——— -->
+                <article id="centralized-vs-distributed" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-emerald">⑂</div>
+                            <div>
+                                <span class="section-number">Section 05</span>
+                                <h2 class="section-title">Centralisé vs Distribué</h2>
+                            </div>
+                        </div>
+
+                        <p>
+                            Il existe deux grandes familles de systèmes de contrôle de versions. Comprendre
+                            leur différence est essentiel pour saisir pourquoi Git a révolutionné le développement.
+                        </p>
+
+                        <h2 class="sub">Les systèmes centralisés (CVCS)</h2>
+                        <p>
+                            Dans un système centralisé (comme <strong style="color:var(--text-primary)">Subversion /
+                                SVN</strong>
+                            ou CVS), il existe un seul serveur central qui contient toutes les versions des fichiers.
+                            Les clients récupèrent des fichiers depuis ce serveur central.
+                        </p>
+
+                        <div class="callout callout-warning">
+                            <div class="callout-icon">⚡</div>
+                            <div class="callout-content">
+                                <strong>Le point de défaillance unique</strong>
+                                <p>Si le serveur central tombe en panne, personne ne peut collaborer ou sauvegarder les
+                                    modifications. Si le disque dur du serveur est corrompu sans sauvegarde récente,
+                                    vous perdez <em>tout</em>.</p>
+                            </div>
+                        </div>
+
+                        <h2 class="sub">Les systèmes distribués (DVCS)</h2>
+                        <p>
+                            Avec Git (<strong style="color:var(--text-primary)">Distributed VCS</strong>), les clients
+                            ne récupèrent pas seulement les dernières versions des fichiers — ils <em>dupliquent
+                                intégralement</em> le dépôt, historique compris. Chaque développeur possède une
+                            copie complète du projet.
+                        </p>
+
+                        <table class="compare-table">
+                            <thead>
+                                <tr>
+                                    <th>Caractéristique</th>
+                                    <th>Centralisé (SVN)</th>
+                                    <th>Distribué (Git)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Travail hors-ligne</strong></td>
+                                    <td><span class="badge-centralized">Limité</span></td>
+                                    <td><span class="badge-git">Complet ✓</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Vitesse</strong></td>
+                                    <td>Dépend du réseau</td>
+                                    <td>Opérations locales ultra-rapides</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Redondance</strong></td>
+                                    <td>Point unique de défaillance</td>
+                                    <td>Chaque clone = sauvegarde complète</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Branches</strong></td>
+                                    <td>Coûteuses, lentes</td>
+                                    <td>Légères, instantanées</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Collaboration</strong></td>
+                                    <td>Flux linéaire, verrou de fichiers</td>
+                                    <td>Non-linéaire, branches parallèles</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Historique complet</strong></td>
+                                    <td>Uniquement sur le serveur</td>
+                                    <td>Sur chaque machine locale</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="callout callout-success">
+                            <div class="callout-icon">✅</div>
+                            <div class="callout-content">
+                                <strong>Pourquoi Git a gagné</strong>
+                                <p>La combinaison vitesse + distribution complète + gestion des branches légères
+                                    a rendu Git incontournable. Aujourd'hui, plus de 90% des développeurs professionnels
+                                    utilisent Git comme système de contrôle de versions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- ——— 06. AVANTAGES ——— -->
+                <article id="avantages" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-amber">🏆</div>
+                            <div>
+                                <span class="section-number">Section 06</span>
+                                <h2 class="section-title">Avantages concrets de Git</h2>
+                            </div>
+                        </div>
+
+                        <p>
+                            Git ne se contente pas de stocker vos fichiers — il transforme complètement la façon
+                            dont vous développez, collaborez et livrez du code.
+                        </p>
+
+                        <!-- FAQ Accordion -->
+                        <div style="margin-top: 20px;">
+
+                            <div class="accordion-item">
+                                <button class="accordion-header" onclick="toggleAccordion(this)">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-emoji">⏪</span>
+                                        <span class="accordion-title">Revenir à n'importe quelle version
+                                            précédente</span>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </button>
+                                <div class="accordion-body">
+                                    <div class="accordion-body-inner">
+                                        <p>Git conserve un historique complet de toutes vos modifications. Si un bug est
+                                            introduit, vous pouvez identifier précisément quel commit l'a causé et
+                                            revenir
+                                            à un état antérieur stable en quelques secondes.</p>
+                                        <p>La commande <code>git checkout &lt;hash-du-commit&gt;</code> vous téléporte
+                                            littéralement dans le passé de votre projet. La commande
+                                            <code>git revert</code>
+                                            crée un nouveau commit qui annule les effets d'un commit précédent de façon
+                                            propre.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <button class="accordion-header" onclick="toggleAccordion(this)">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-emoji">👥</span>
+                                        <span class="accordion-title">Collaborer efficacement sans se marcher
+                                            dessus</span>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </button>
+                                <div class="accordion-body">
+                                    <div class="accordion-body-inner">
+                                        <p>Grâce aux <strong>branches</strong>, chaque développeur peut travailler sur
+                                            sa
+                                            propre fonctionnalité de façon complètement isolée. Alice développe le
+                                            module de
+                                            paiement pendant que Bob corrige des bugs — sans aucune interférence.</p>
+                                        <p>Lorsque les deux ont terminé, Git fusionne intelligemment les modifications.
+                                            En cas de conflit sur la même ligne d'un fichier, Git vous demande de
+                                            décider
+                                            quelle version conserver.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <button class="accordion-header" onclick="toggleAccordion(this)">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-emoji">🔍</span>
+                                        <span class="accordion-title">Traçabilité complète — qui a changé quoi ?</span>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </button>
+                                <div class="accordion-body">
+                                    <div class="accordion-body-inner">
+                                        <p>Chaque commit enregistre l'auteur, la date et un message descriptif.
+                                            La commande <code>git blame</code> vous permet de voir, ligne par ligne,
+                                            qui a écrit chaque portion de code et dans quel commit.</p>
+                                        <p>C'est un outil indispensable pour comprendre le <em>pourquoi</em> derrière
+                                            chaque décision de code, surtout sur des projets de longue durée avec de
+                                            multiples
+                                            contributeurs.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <button class="accordion-header" onclick="toggleAccordion(this)">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-emoji">🧪</span>
+                                        <span class="accordion-title">Expérimenter en toute sécurité</span>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </button>
+                                <div class="accordion-body">
+                                    <div class="accordion-body-inner">
+                                        <p>Vous pouvez créer une branche pour tester une idée radicale sans aucun risque
+                                            pour le code de production. Si l'expérience échoue, supprimez simplement la
+                                            branche. Si elle réussit, fusionnez-la.</p>
+                                        <p>Cette liberté d'expérimentation est l'une des raisons pour lesquelles Git
+                                            favorise l'innovation : le coût de l'échec est quasiment nul.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <button class="accordion-header" onclick="toggleAccordion(this)">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-emoji">🚀</span>
+                                        <span class="accordion-title">Intégration avec l'écosystème DevOps</span>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </button>
+                                <div class="accordion-body">
+                                    <div class="accordion-body-inner">
+                                        <p>Git est au cœur de toutes les pratiques DevOps modernes. Les pipelines CI/CD
+                                            (Intégration Continue / Déploiement Continu) sont déclenchés par des
+                                            événements
+                                            Git : push, pull request, tag de release…</p>
+                                        <p>GitHub Actions, GitLab CI, CircleCI, Jenkins — tous ces outils s'appuient
+                                            directement sur les événements Git pour automatiser les tests, le build et
+                                            le déploiement de vos applications.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </article>
+
+                <!-- ——— 07. QUIZ ——— -->
+                <article id="quiz" class="glass-card reveal">
+                    <div class="quiz-card">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-purple">🎯</div>
+                            <div>
+                                <span class="section-number">Section 07</span>
+                                <h2 class="section-title">Vérifiez vos acquis</h2>
+                            </div>
+                        </div>
+
+                        <!-- Question 1 -->
+                        <div class="quiz-question">
+                            1. Quelle est la principale différence entre un système de contrôle de versions
+                            <strong>distribué</strong> (comme Git) et un système <strong>centralisé</strong> (comme SVN)
+                            ?
+                        </div>
+                        <div class="quiz-options" id="q1-options">
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q1', false)">
+                                Un DVCS est plus lent car il doit synchroniser toutes les modifications avec le serveur
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q1', true)">
+                                Dans un DVCS, chaque développeur possède une copie complète du dépôt avec tout
+                                l'historique
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q1', false)">
+                                Un DVCS ne permet pas de travailler avec des branches
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q1', false)">
+                                Dans un CVCS, il n'y a pas de notion de commits
+                            </button>
+                        </div>
+                        <div class="quiz-feedback" id="q1-feedback"></div>
+
+                        <hr style="border:none; border-top:1px solid var(--glass-border); margin:28px 0;" />
+
+                        <!-- Question 2 -->
+                        <div class="quiz-question">
+                            2. Qu'est-ce que la <strong>zone d'index (Staging Area)</strong> dans Git ?
+                        </div>
+                        <div class="quiz-options" id="q2-options">
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q2', false)">
+                                L'endroit où Git stocke les branches distantes récupérées depuis GitHub
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q2', false)">
+                                Le dossier <code>.git</code> qui contient la base de données de Git
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q2', true)">
+                                Un espace intermédiaire où vous sélectionnez les modifications à inclure dans le
+                                prochain commit
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q2', false)">
+                                Une branche temporaire créée automatiquement lors d'un conflit de fusion
+                            </button>
+                        </div>
+                        <div class="quiz-feedback" id="q2-feedback"></div>
+
+                        <hr style="border:none; border-top:1px solid var(--glass-border); margin:28px 0;" />
+
+                        <!-- Question 3 -->
+                        <div class="quiz-question">
+                            3. Qui a créé Git, et en quelle année ?
+                        </div>
+                        <div class="quiz-options" id="q3-options">
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q3', false)">
+                                Bill Gates, en 2001
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q3', false)">
+                                GitHub Inc., en 2008
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q3', true)">
+                                Linus Torvalds, en 2005
+                            </button>
+                            <button class="quiz-option" onclick="checkAnswer(this, 'q3', false)">
+                                Google, en 2010
+                            </button>
+                        </div>
+                        <div class="quiz-feedback" id="q3-feedback"></div>
+
+                    </div>
+                </article>
+
+                <!-- ——— 08. RÉSUMÉ ——— -->
+                <article id="resume" class="glass-card reveal">
+                    <div class="card-body">
+                        <div class="section-header">
+                            <div class="section-icon icon-bg-emerald">✨</div>
+                            <div>
+                                <span class="section-number">Section 08</span>
+                                <h2 class="section-title">Résumé du chapitre</h2>
+                            </div>
+                        </div>
+
+                        <div class="callout callout-key">
+                            <div class="callout-icon">🎓</div>
+                            <div class="callout-content">
+                                <strong>Ce que vous avez appris</strong>
+                                <p>Dans ce chapitre, vous avez découvert pourquoi le contrôle de versions est
+                                    indispensable, comment Git fonctionne en interne, et ce qui le distingue
+                                    des systèmes centralisés.</p>
+                            </div>
+                        </div>
+
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="si-icon">🕰</span>
+                                <div class="si-title">Machine à remonter le temps</div>
+                                <div class="si-desc">Git vous permet de naviguer dans tout l'historique de votre projet
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <span class="si-icon">📸</span>
+                                <div class="si-title">Instantanés (Commits)</div>
+                                <div class="si-desc">Chaque commit est une photo complète de votre projet à un instant T
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <span class="si-icon">🌐</span>
+                                <div class="si-title">Distribué</div>
+                                <div class="si-desc">Chaque développeur possède une copie complète — pas de point de
+                                    défaillance unique</div>
+                            </div>
+                            <div class="summary-item">
+                                <span class="si-icon">🌿</span>
+                                <div class="si-title">Branches légères</div>
+                                <div class="si-desc">Expérimentez librement sans jamais risquer le code de production
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <span class="si-icon">👥</span>
+                                <div class="si-title">Collaboration fluide</div>
+                                <div class="si-desc">Plusieurs développeurs travaillent en parallèle sans se bloquer
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <span class="si-icon">🔒</span>
+                                <div class="si-title">Traçabilité totale</div>
+                                <div class="si-desc">Chaque modification est attribuée à un auteur avec date et
+                                    description</div>
+                            </div>
+                        </div>
+
+                        <div
+                            style="margin-top: 32px; padding: 24px; background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.2); border-radius: var(--radius-md);">
+                            <h3 class="sub" style="margin-top:0; color: var(--accent-blue);">🚀 Prochaine étape</h3>
+                            <p style="margin-bottom: 0;">
+                                Maintenant que vous comprenez les bases du contrôle de versions, vous êtes prêt
+                                à installer Git sur votre machine et à créer votre premier dépôt. Dans le prochain
+                                chapitre, vous configurerez Git et effectuerez vos premiers commits.
+                            </p>
+                        </div>
+
+                    </div>
+                </article>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Back to top -->
+    <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Retour en haut">
+        ↑
+    </button>
+
+    <!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+    <script>
+        /* ── Progress bar ── */
+        const progressBar = document.getElementById('progress-bar');
+        window.addEventListener('scroll', () => {
+            const max = document.documentElement.scrollHeight - window.innerHeight;
+            progressBar.style.width = (window.scrollY / max * 100) + '%';
+        });
+
+        /* ── Back to top ── */
+        const btt = document.getElementById('back-to-top');
+        window.addEventListener('scroll', () => {
+            btt.classList.toggle('visible', window.scrollY > 400);
+        });
+
+        /* ── Reveal on scroll ── */
+        const revealEls = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((e, i) => {
+                if (e.isIntersecting) {
+                    setTimeout(() => e.target.classList.add('visible'), i * 80);
+                    observer.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        revealEls.forEach(el => observer.observe(el));
+
+        /* ── Active TOC link ── */
+        const sections = document.querySelectorAll('article[id]');
+        const tocLinks = document.querySelectorAll('.toc-list a');
+        const tocObserver = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    tocLinks.forEach(a => a.classList.remove('active'));
+                    const active = document.querySelector(`.toc-list a[href="#${e.target.id}"]`);
+                    if (active) active.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-40% 0px -50% 0px' });
+        sections.forEach(s => tocObserver.observe(s));
+
+        /* ── Accordion ── */
+        function toggleAccordion(btn) {
+            const body = btn.nextElementSibling;
+            const isOpen = body.classList.contains('open');
+            // Close all
+            document.querySelectorAll('.accordion-body.open').forEach(b => b.classList.remove('open'));
+            document.querySelectorAll('.accordion-header.open').forEach(h => h.classList.remove('open'));
+            // Open clicked if was closed
+            if (!isOpen) {
+                body.classList.add('open');
+                btn.classList.add('open');
+            }
+        }
+
+        /* ── Quiz ── */
+        const feedbacks = {
+            q1: {
+                correct: '✅ Exact ! Dans un système distribué, chaque clone est un dépôt complet avec tout l\'historique. Cela permet le travail hors-ligne et élimine le point unique de défaillance.',
+                wrong: '❌ Pas tout à fait. Dans un DVCS comme Git, chaque développeur possède une copie intégrale du dépôt — c\'est la caractéristique fondamentale qui le distingue d\'un système centralisé.'
+            },
+            q2: {
+                correct: '✅ Parfait ! La Staging Area (index) est l\'espace de préparation entre vos fichiers modifiés et le commit. Elle vous permet de choisir précisément quelles modifications inclure.',
+                wrong: '❌ Incorrect. La zone d\'index est un espace intermédiaire (entre le working directory et le commit) où vous préparez votre prochain instantané.'
+            },
+            q3: {
+                correct: '✅ Correct ! Linus Torvalds a créé Git en 2005 pour gérer le développement du noyau Linux après des désaccords avec le VCS propriétaire BitKeeper.',
+                wrong: '❌ Faux. Git a été créé par Linus Torvalds (le créateur du noyau Linux) en 2005, initialement pour gérer le développement de Linux lui-même.'
+            }
+        };
+
+        function checkAnswer(btn, qId, isCorrect) {
+            const options = document.querySelectorAll(`#${qId}-options .quiz-option`);
+            options.forEach(o => o.disabled = true);
+            btn.classList.add(isCorrect ? 'correct' : 'wrong');
+            // Mark correct if wrong was chosen
+            if (!isCorrect) {
+                options.forEach(o => {
+                    if (o.getAttribute('onclick').includes('true')) o.classList.add('correct');
+                });
+            }
+            const fb = document.getElementById(`${qId}-feedback`);
+            fb.textContent = isCorrect ? feedbacks[qId].correct : feedbacks[qId].wrong;
+            fb.className = `quiz-feedback show ${isCorrect ? 'success' : 'error'}`;
+        }
+    </script>
+
+</body>
+
+</html>

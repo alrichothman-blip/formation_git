@@ -26,14 +26,14 @@ export default function Sidebar({ activeView, onNavigate, collapsed, onToggle, n
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full bg-slate-900 text-white flex flex-col transition-all duration-300 z-40 ${
+      className={`fixed left-0 top-0 h-full bg-[#080b12] text-white flex flex-col transition-all duration-300 z-40 shadow-[12px_0_40px_-24px_rgba(0,0,0,.7)] ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
       {/* Logo */}
       <div className={`flex items-center gap-3 px-4 py-5 border-b border-slate-700/60 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-9 h-9 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/30">
-          <BookOpen size={18} className="text-white" />
+        <div className="w-9 h-9 bg-white rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/30 ring-1 ring-white/20">
+          <img src="/Sans titre.jpg" alt="Logo bibliothèque" className="w-full h-full object-cover" />
         </div>
         {!collapsed && (
           <div>
@@ -62,14 +62,14 @@ export default function Sidebar({ activeView, onNavigate, collapsed, onToggle, n
             title={collapsed ? label : undefined}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative ${
               activeView === id
-                ? 'bg-teal-500/20 text-teal-400 shadow-sm'
+                ? 'bg-blue-500/15 text-blue-300 shadow-sm'
                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
             }`}
           >
             <Icon size={18} className={`flex-shrink-0 ${activeView === id ? 'text-teal-400' : ''}`} />
             {!collapsed && <span>{label}</span>}
             {activeView === id && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-400 rounded-r-full" />
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-red-500 rounded-r-full" />
             )}
           </button>
         ))}
@@ -82,7 +82,7 @@ export default function Sidebar({ activeView, onNavigate, collapsed, onToggle, n
           title={collapsed ? 'Accueil' : undefined}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
             activeView === 'home'
-              ? 'bg-teal-500/20 text-teal-400'
+              ? 'bg-blue-500/15 text-blue-300'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
@@ -119,7 +119,7 @@ export default function Sidebar({ activeView, onNavigate, collapsed, onToggle, n
       {/* Collapse toggle */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-20 w-6 h-6 bg-slate-700 border border-slate-600 rounded-full flex items-center justify-center text-slate-300 hover:bg-teal-500 hover:text-white hover:border-teal-500 transition-all duration-200 shadow-md z-50"
+        className="absolute -right-3 top-20 w-6 h-6 bg-slate-800 border border-slate-600 rounded-full flex items-center justify-center text-slate-300 hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200 shadow-md z-50"
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>

@@ -11,6 +11,7 @@ import Dashboard from './views/Dashboard';
 import Books from './views/Books';
 import Members from './views/Members';
 import Borrowings from './views/Borrowings';
+import ErrorBoundary from './components/ErrorBoundary';
 import Stats from './views/Stats';
 
 const PUBLIC_VIEWS = ['home', 'register', 'login'];
@@ -36,6 +37,8 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [addTrigger, setAddTrigger] = useState(0);
   const [overdueCount, setOverdueCount] = useState(0);
+  const [initialOpenBorrowingId, setInitialOpenBorrowingId] = useState<number | null>(null);
+  const [initialMemberId, setInitialMemberId] = useState<number | null>(null);
 
   const isAuthenticated = !!user;
   const isAdmin = role === 'admin';
@@ -88,6 +91,13 @@ export default function App() {
     setActiveView(view);
   }, [isAuthenticated, isAdmin, signOut]);
 
+  const handleOpenBorrowing = useCallback((b: any) => {
+    // open borrowings view and pre-select the borrowing / member
+    setInitialOpenBorrowingId(b?.id ?? null);
+    setInitialMemberId(b?.members?.id ?? null);
+    setActiveView('borrowings');
+  }, []);
+
   const handleAdd = () => {
     if (activeView === 'members') { handleNavigate('register'); return; }
     if (!isAdmin) return;
@@ -120,8 +130,10 @@ export default function App() {
             onToggleDark={() => setDarkMode(d => !d)}
             searchQuery={searchQuery}
             onSearch={viewConfig.searchable ? setSearchQuery : undefined}
+            onOpenBorrowing={handleOpenBorrowing}
             onAdd={viewConfig.addLabel && isAdmin ? handleAdd : undefined}
             addLabel={viewConfig.addLabel}
+            activeView={activeView}
           />
 
           {activeView === 'home' && <Home onNavigate={handleNavigate} />}
@@ -135,7 +147,16 @@ export default function App() {
             <Members searchQuery={searchQuery} addTrigger={addTrigger} showToast={showToast} />
           )}
           {activeView === 'borrowings' && (
-            <Borrowings searchQuery={searchQuery} addTrigger={addTrigger} showToast={showToast} isAdmin={isAdmin} />
+            <ErrorBoundary>
+              <Borrowings
+                searchQuery={searchQuery}
+                addTrigger={addTrigger}
+                showToast={showToast}
+                isAdmin={isAdmin}
+                initialMemberId={initialMemberId ?? undefined}
+                initialOpenBorrowingId={initialOpenBorrowingId ?? undefined}
+              />
+            </ErrorBoundary>
           )}
           {activeView === 'stats' && isAdmin && <Stats />}
         </div>

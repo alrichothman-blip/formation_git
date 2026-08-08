@@ -63,3 +63,4 @@ export default function Toast({ toasts, onRemove }: ToastProps) {
     </div>
   );
 }
+

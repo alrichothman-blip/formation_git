@@ -11,15 +11,18 @@ async function request(path: string, options: RequestInit = {}): Promise<any> {
   });
 
   const text = await res.text();
-  let data: any;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { error: text };
+  const contentType = res.headers.get('content-type') || '';
+  let data: any = {};
+  if (contentType.includes('application/json')) {
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { error: 'Réponse JSON invalide' }; }
+  } else {
+    // Non-JSON response (e.g. HTML error) — keep a short safe message
+    data = { error: text ? (text.substring(0, 300) + (text.length > 300 ? '...' : '')) : null };
   }
 
   if (!res.ok) {
-    throw new Error(data.error || `Erreur ${res.status}`);
+    const msg = data?.error || `Erreur ${res.status}`;
+    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
   }
   return data;
 }
@@ -48,6 +51,29 @@ export const books = {
   create: (payload: any) => request('books.php', { method: 'POST', body: toBody(payload) }),
   update: (id: number, payload: any) => request(`books.php?id=${id}`, { method: 'PUT', body: toBody(payload) }),
   remove: (id: number) => request(`books.php?id=${id}`, { method: 'DELETE' }),
+  uploadCover: (file: File) => {
+    const formData = new FormData();
+    formData.append('cover', file);
+    return fetch(`${API_BASE}/upload.php`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    }).then(async (res) => {
+      const text = await res.text();
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = {};
+      if (contentType.includes('application/json')) {
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { error: 'Réponse JSON invalide' }; }
+      } else {
+        data = { error: text ? (text.substring(0, 300) + (text.length > 300 ? '...' : '')) : null };
+      }
+      if (!res.ok) {
+        const msg = data?.error || `Erreur ${res.status}`;
+        throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+      return data;
+    });
+  },
 };
 
 // ============================================================
@@ -90,3 +116,4 @@ export const dashboard = {
 export const stats = {
   get: () => request('stats.php'),
 };
+

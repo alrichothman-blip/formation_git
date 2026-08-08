@@ -29,9 +29,9 @@ $availableBooks = (int)db()->query('SELECT COALESCE(SUM(available_copies), 0) FR
 $totalMembers = (int)db()->query('SELECT COUNT(*) FROM members')->fetchColumn();
 
 // New members this month
-$newMembers = (int)db()->prepare('SELECT COUNT(*) FROM members WHERE created_at >= ?');
-db()->prepare('SELECT COUNT(*) FROM members WHERE created_at >= ?')->execute([$firstOfMonth . ' 00:00:00']);
-$newMembers = (int)db()->query("SELECT COUNT(*) FROM members WHERE created_at >= '$firstOfMonth 00:00:00'")->fetchColumn();
+$newMembersStmt = db()->prepare('SELECT COUNT(*) FROM members WHERE created_at >= ?');
+$newMembersStmt->execute([$firstOfMonth . ' 00:00:00']);
+$newMembers = (int)$newMembersStmt->fetchColumn();
 
 // Active loans
 $activeLoans = (int)db()->query("SELECT COUNT(*) FROM borrowings WHERE return_date IS NULL")->fetchColumn();
@@ -39,11 +39,17 @@ $activeLoans = (int)db()->query("SELECT COUNT(*) FROM borrowings WHERE return_da
 // Overdue loans
 $overdueLoans = (int)db()->query("SELECT COUNT(*) FROM borrowings WHERE return_date IS NULL AND due_date < '$today'")->fetchColumn();
 
+// Returned this month
+$returnedThisMonthStmt = db()->prepare('SELECT COUNT(*) FROM borrowings WHERE return_date >= ?');
+$returnedThisMonthStmt->execute([$firstOfMonth . ' 00:00:00']);
+$returnedThisMonth = (int)$returnedThisMonthStmt->fetchColumn();
+
 // Recent borrowings (8 latest)
 $recentBorrowingsStmt = db()->query("
   SELECT bw.id, bw.book_id, bw.member_id, bw.borrow_date, bw.due_date, bw.return_date, bw.status, bw.notes,
-    b.title AS book_title, b.author AS book_author, b.cover_url AS book_cover_url,
-    m.name AS member_name, m.prenom AS member_prenom, m.email AS member_email
+    b.title AS book_title, b.author AS book_author, b.isbn AS book_isbn, b.cover_url AS book_cover_url,
+    m.name AS member_name, m.prenom AS member_prenom, m.email AS member_email,
+    m.phone AS member_phone, m.address AS member_address, m.parcours AS member_parcours, m.annee_etude AS member_annee_etude
   FROM borrowings bw
   JOIN books b ON bw.book_id = b.id
   JOIN members m ON bw.member_id = m.id
@@ -58,14 +64,19 @@ foreach ($recentBorrowings as &$b) {
   $b['books'] = [
     'title' => $b['book_title'],
     'author' => $b['book_author'],
+    'isbn' => $b['book_isbn'],
     'cover_url' => $b['book_cover_url'],
   ];
   $b['members'] = [
     'name' => $b['member_name'],
     'prenom' => $b['member_prenom'],
     'email' => $b['member_email'],
+    'phone' => $b['member_phone'],
+    'address' => $b['member_address'],
+    'parcours' => $b['member_parcours'],
+    'annee_etude' => $b['member_annee_etude'],
   ];
-  unset($b['book_title'], $b['book_author'], $b['book_cover_url'], $b['member_name'], $b['member_prenom'], $b['member_email']);
+  unset($b['book_title'], $b['book_author'], $b['book_isbn'], $b['book_cover_url'], $b['member_name'], $b['member_prenom'], $b['member_email'], $b['member_phone'], $b['member_address'], $b['member_parcours'], $b['member_annee_etude']);
 }
 
 // Recent books (5 latest)
@@ -92,7 +103,7 @@ json_response([
   'overdueLoans' => $overdueLoans,
   'availableBooks' => $availableBooks,
   'newMembersThisMonth' => $newMembers,
-  'returnedThisMonth' => 0,
+  'returnedThisMonth' => $returnedThisMonth,
   'recentBorrowings' => $recentBorrowings,
   'recentBooks' => $recentBooks,
 ]);

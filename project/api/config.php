@@ -91,6 +91,18 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+// Ensure all uncaught exceptions/errors return JSON instead of HTML
+set_exception_handler(function ($e) {
+  http_response_code(500);
+  echo json_encode(['error' => 'Internal server error: ' . ($e->getMessage() ?? 'unknown')], JSON_UNESCAPED_UNICODE);
+  exit;
+});
+
+set_error_handler(function ($severity, $message, $file, $line) {
+  // Convert PHP errors/warnings to exceptions so they are handled above
+  throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 // Check if user is authenticated
 function is_authenticated(): ?array {
   if (isset($_SESSION['user_id'])) {

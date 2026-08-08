@@ -19,6 +19,7 @@ interface BookFormData {
   category_id: string;
   description: string;
   cover_url: string;
+  cover_file?: File;
   total_copies: number;
   published_year: string;
   language: string;
@@ -28,7 +29,7 @@ interface BookFormData {
 
 const emptyForm: BookFormData = {
   title: '', author: '', isbn: '', category_id: '', description: '',
-  cover_url: '', total_copies: 1, published_year: '', language: 'Français', pages: '', publisher: ''
+  cover_url: '', cover_file: undefined, total_copies: 1, published_year: '', language: 'Français', pages: '', publisher: ''
 };
 
 export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: BooksProps) {
@@ -93,18 +94,25 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
       return;
     }
     setSaving(true);
-    const payload = {
-      title: form.title.trim(), author: form.author.trim(),
-      isbn: form.isbn.trim() || null,
-      category_id: form.category_id ? parseInt(form.category_id) : null,
-      description: form.description, cover_url: form.cover_url,
-      total_copies: form.total_copies,
-      published_year: form.published_year ? parseInt(form.published_year) : null,
-      language: form.language, pages: form.pages ? parseInt(form.pages) : null,
-      publisher: form.publisher,
-    };
 
     try {
+      let coverUrl = form.cover_url;
+      if (form.cover_file) {
+        const uploadResult = await booksApi.uploadCover(form.cover_file);
+        coverUrl = uploadResult.cover_url;
+      }
+
+      const payload = {
+        title: form.title.trim(), author: form.author.trim(),
+        isbn: form.isbn.trim() || null,
+        category_id: form.category_id ? parseInt(form.category_id) : null,
+        description: form.description, cover_url: coverUrl,
+        total_copies: form.total_copies,
+        published_year: form.published_year ? parseInt(form.published_year) : null,
+        language: form.language, pages: form.pages ? parseInt(form.pages) : null,
+        publisher: form.publisher,
+      };
+
       if (modalMode === 'add') {
         await booksApi.create(payload);
         showToast('success', 'Livre ajouté avec succès!');
@@ -118,6 +126,7 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
 
     setSaving(false);
     setModalMode(null);
+    setForm({ ...form, cover_file: undefined });
     fetchData();
   }
 
@@ -300,10 +309,14 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-9 h-11 rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                        className="w-9 h-11 rounded-lg overflow-hidden flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                         style={{ background: `linear-gradient(135deg, ${getCategoryColor(book)}, ${getCategoryColor(book)}aa)` }}
                       >
-                        {book.title.charAt(0)}
+                        {book.cover_url ? (
+                          <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{book.title.charAt(0)}</span>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-slate-900 dark:text-white">{book.title}</p>
@@ -395,8 +408,28 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
               <input type="number" min="1" value={form.total_copies} onChange={e => setForm({ ...form, total_copies: parseInt(e.target.value) || 1 })} className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-400 text-slate-800 dark:text-white" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">URL de couverture</label>
-              <input type="url" value={form.cover_url} onChange={e => setForm({ ...form, cover_url: e.target.value })} placeholder="https://..." className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-400 text-slate-800 dark:text-white placeholder-slate-400" />
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Couverture (URL ou fichier)</label>
+              <input
+                type="url"
+                value={form.cover_url}
+                onChange={e => setForm({ ...form, cover_url: e.target.value, cover_file: undefined })}
+                placeholder="https://..."
+                className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-400 text-slate-800 dark:text-white placeholder-slate-400"
+              />
+              <div className="mt-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    setForm({ ...form, cover_file: file, cover_url: '' });
+                  }}
+                  className="w-full text-sm text-slate-500 dark:text-slate-300 file:bg-slate-100 dark:file:bg-slate-700 file:border file:border-slate-200 dark:file:border-slate-600 file:px-3 file:py-2 file:rounded-xl file:text-slate-700 dark:file:text-slate-100 file:cursor-pointer"
+                />
+              </div>
+              {(form.cover_url || form.cover_file) && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Couverture facultative : vous pouvez utiliser une URL ou un fichier image.</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Description</label>

@@ -21,3 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+api/secrets.php
+
+api/secrets.php

@@ -4,6 +4,7 @@ import { useAuth } from './lib/auth';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Toast, { ToastItem } from './components/Toast';
+import LibrisAIWidget from './components/LibrisAIWidget';
 import Home from './views/Home';
 import Register from './views/Register';
 import Login from './views/Login';
@@ -163,6 +164,7 @@ export default function App() {
       </main>
 
       <Toast toasts={toasts} onRemove={removeToast} />
+      {!['login', 'register'].includes(activeView) && <LibrisAIWidget />}
     </div>
   );
 }

@@ -32,6 +32,27 @@ const emptyForm: BookFormData = {
   cover_url: '', cover_file: undefined, total_copies: 1, published_year: '', language: 'Français', pages: '', publisher: ''
 };
 
+// Affiche la couverture si elle charge correctement, sinon revient automatiquement
+// à l'initiale du titre (comme quand cover_url est vide). Évite les icônes d'image
+// cassée si la source externe est indisponible ou renvoie une image invalide.
+function BookCover({ title, coverUrl }: { title: string; coverUrl: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!coverUrl || failed) {
+    return <span>{title.charAt(0)}</span>;
+  }
+
+  return (
+    <img
+      src={coverUrl}
+      alt={title}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="w-full h-full object-cover"
+    />
+  );
+}
+
 export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: BooksProps) {
   const [books, setBooks] = useState<BookType[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -247,11 +268,7 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
                 className="h-40 flex items-center justify-center text-white text-4xl font-bold relative"
                 style={{ background: `linear-gradient(135deg, ${getCategoryColor(book)}, ${getCategoryColor(book)}aa)` }}
               >
-                {book.cover_url ? (
-                  <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{book.title.charAt(0)}</span>
-                )}
+                <BookCover title={book.title} coverUrl={book.cover_url} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
               </div>
               <div className="p-4">
@@ -312,11 +329,7 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
                         className="w-9 h-11 rounded-lg overflow-hidden flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                         style={{ background: `linear-gradient(135deg, ${getCategoryColor(book)}, ${getCategoryColor(book)}aa)` }}
                       >
-                        {book.cover_url ? (
-                          <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <span>{book.title.charAt(0)}</span>
-                        )}
+                        <BookCover title={book.title} coverUrl={book.cover_url} />
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-slate-900 dark:text-white">{book.title}</p>
@@ -456,10 +469,10 @@ export default function Books({ searchQuery, addTrigger, showToast, isAdmin }: B
         <Modal title="Détails du livre" onClose={() => setModalMode(null)} size="lg">
           <div className="flex gap-6">
             <div
-              className="w-28 h-36 rounded-xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 shadow-lg"
+              className="w-28 h-36 rounded-xl overflow-hidden flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 shadow-lg"
               style={{ background: `linear-gradient(135deg, ${getCategoryColor(selectedBook)}, ${getCategoryColor(selectedBook)}aa)` }}
             >
-              {selectedBook.title.charAt(0)}
+              <BookCover title={selectedBook.title} coverUrl={selectedBook.cover_url} />
             </div>
             <div className="flex-1 space-y-3">
               <div>
